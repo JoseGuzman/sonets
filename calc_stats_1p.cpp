@@ -10,7 +10,7 @@
 ////////////////////////////////////////////////////////////////////
 
 
-int calc_phat_alphahat_1p(gsl_matrix *W, int N_nodes,
+int calc_phat_alphahat_1p(gsl_matrix_float *W, int N_nodes,
 			  double &phat,
 			  double &alphahat_recip,
 			  double &alphahat_conv,
@@ -43,12 +43,12 @@ int calc_phat_alphahat_1p(gsl_matrix *W, int N_nodes,
 // network adjacency matrix W with N_node nodes
 ////////////////////////////////////////////////////////////////////
 
-int calc_N_motifs(gsl_matrix *W, int N_nodes, 
+int calc_N_motifs(gsl_matrix_float *W, int N_nodes,
 	       double &N_edge, double &N_recip,
 	       double &N_conv, double &N_div, double &N_chain,
 	       double &N_other) {
 
-  double *thedata = W->data;
+  float *thedata = W->data;
   size_t tda = W->tda;
 
   double row_sums[N_nodes];

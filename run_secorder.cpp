@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
   else
     gsl_rng_set(rng, time(NULL));
   
-  gsl_matrix *W;
+  gsl_matrix_float *W;
   W=secorder_rec_1p(N_nodes,p,  alpha_recip, alpha_conv, alpha_div, alpha_chain,
 		    rng);
   
@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
 
   for(int i=0; i<N_nodes;i++) {
     for(int j=0; j<N_nodes; j++) {
-      fprintf(fhnd, "%i ", gsl_matrix_get(W,i,j)>1.0);
+      fprintf(fhnd, "%i ", gsl_matrix_float_get(W,i,j)>1.0);
     }
     fprintf(fhnd,"\n");
   }
@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
   size_t nnz=0;
   for(int i=0; i<N_nodes; i++) {
     for(int j=0; j<N_nodes; j++) {
-      nnz += gsl_matrix_get(W,i,j)>1.0;
+      nnz += gsl_matrix_float_get(W,i,j)>1.0;
     }
   }
   strcat(FN,".sparse");
@@ -112,7 +112,7 @@ int main(int argc, char *argv[]) {
   fwrite(&nnz,8,1,fhnd);
   for (int32_t i=0; i<N_nodes; i++) {
     for (int32_t j=0; j<N_nodes; j++) {
-      if (gsl_matrix_get(W,i,j) > 1.0) {
+      if (gsl_matrix_float_get(W,i,j) > 1.0) {
         fwrite(&i, 4, 1, fhnd);
         fwrite(&j, 4, 1, fhnd);
       }

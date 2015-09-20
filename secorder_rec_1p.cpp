@@ -13,9 +13,9 @@ using namespace std;
 
 // declare auxiliary functions
 int gen_corr_gaussian(const int N_nodes, double sqrt_diag, double sqrt_recip,
-		      double sqrt_conv, double sqrt_div, double sqrt_chain, 
-              double sqrt_noshare, gsl_matrix *thevars, gsl_rng *rng);
-int calc_gaus_covs(gsl_matrix *W_gaus, int N_nodes,
+		      double sqrt_conv, double sqrt_div, double sqrt_chain,
+              double sqrt_noshare, gsl_matrix_float *thevars, gsl_rng *rng);
+int calc_gaus_covs(gsl_matrix_float *W_gaus, int N_nodes,
 		   double &sigma, double &cov_recip,
 		   double &cov_conv, double &cov_div,
 		   double &cov_chain, double &cov_other);
@@ -49,8 +49,8 @@ int calc_gaus_covs(gsl_matrix *W_gaus, int N_nodes,
 // connection from node j onto node i
 ////////////////////////////////////////////////////////////////////////
 
-gsl_matrix* secorder_rec_1p(int N_nodes, double p, 
-			    double alpha_recip, double alpha_conv, 
+gsl_matrix_float* secorder_rec_1p(int N_nodes, double p,
+			    double alpha_recip, double alpha_conv,
 			    double alpha_div, double alpha_chain,
 			    gsl_rng *rng) {
 
@@ -164,7 +164,7 @@ gsl_matrix* secorder_rec_1p(int N_nodes, double p,
   ////////////////////////////////////////////////////////////
 
 
-  gsl_matrix *W_gaus = gsl_matrix_alloc(N_nodes, N_nodes);
+  gsl_matrix_float *W_gaus = gsl_matrix_float_alloc(N_nodes, N_nodes);
 
   cout << "Generating gaussian matrix...";
   cout.flush();
@@ -224,10 +224,10 @@ gsl_matrix* secorder_rec_1p(int N_nodes, double p,
 ////////////////////////////////////////////////////////////
 int gen_corr_gaussian(const int N_nodes, double sqrt_diag, double sqrt_recip,
 		      double sqrt_conv, double sqrt_div, double sqrt_chain,
-              double sqrt_noshare, gsl_matrix *thevars, gsl_rng *rng) {                
+              double sqrt_noshare, gsl_matrix_float *thevars, gsl_rng *rng) {
 
-  gsl_matrix_set_zero(thevars);
-  double *thedata = thevars->data;
+  gsl_matrix_float_set_zero(thevars);
+  float *thedata = thevars->data;
   size_t tda=thevars->tda;
 
   // for speed we'll access the gsl_matrix entries directly
