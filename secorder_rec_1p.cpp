@@ -262,9 +262,15 @@ int gen_corr_gaussian(const int N_nodes, double sqrt_diag, double sqrt_recip,
 
       row_sums[i] += gaus_ind;
       column_sums[j] += gaus_ind;
-      matrix_sum += gaus_ind;
     }
   }
+
+  // Check danger of Rounding errors, do a SUM over column_sums or row_sums instead
+  for (int i=0; i<N_nodes; i++) {
+    matrix_sum += row_sums[i] + column_sums[i];
+  }
+  matrix_sum *= 0.5;
+
   for (int i=0; i<N_nodes; i++){
     int i_tda=i*tda;
     for (int j=0; j<N_nodes; j++){
