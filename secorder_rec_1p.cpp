@@ -207,30 +207,7 @@ gsl_matrix* secorder_rec_1p(int N_nodes, double p,
 
   }
 
-  ////////////////////////////////////////////////////////////
-  // Step 5: Calculate Bernoulli matrix
-  // Simply make the Bernoulli variable be 1 
-  // if the Gaussian variable is greater than 1
-  ////////////////////////////////////////////////////////////
-
-  cout << "Generating Bernoulli matrix...";
-  cout.flush();
-  // calculate bernoulli matrix
-  gsl_matrix *W_ber = gsl_matrix_alloc(N_nodes, N_nodes);
-  for(int i=0; i<N_nodes; i++) {
-    for(int j=0; j<N_nodes; j++) {
-      gsl_matrix_set(W_ber,i,j,gsl_matrix_get(W_gaus,i,j)>1.0);
-    }
-  }
-
-  // free Gaussian matrix
-  gsl_matrix_free(W_gaus);
-
-  cout << "done\n";
-  cout.flush();
-
-  // return Bernoulli matrix
-  return W_ber;
+  return W_gaus;
 
 }
 

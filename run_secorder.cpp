@@ -86,7 +86,7 @@ int main(int argc, char *argv[]) {
 
   for(int i=0; i<N_nodes;i++) {
     for(int j=0; j<N_nodes; j++) {
-      fprintf(fhnd, "%i ", (int) gsl_matrix_get(W,i,j));
+      fprintf(fhnd, "%i ", gsl_matrix_get(W,i,j)>1.0);
     }
     fprintf(fhnd,"\n");
   }
