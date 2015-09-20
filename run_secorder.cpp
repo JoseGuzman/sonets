@@ -1,4 +1,5 @@
 #include <iostream>
+#include <stdint.h>
 #include <string.h>
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -73,7 +74,7 @@ int main(int argc, char *argv[]) {
   else
     sprintf(FNbase,"_%i_%1.3f_%1.3f_%1.3f_%1.3f_%1.3f",N_nodes,p,alpha_recip, alpha_conv, alpha_div, alpha_chain);
   
-  char FN[200];
+  char FN[2000];
   FILE *fhnd;
   strcpy(FN, "data/w");
   strcat(FN, FNbase);
@@ -92,6 +93,32 @@ int main(int argc, char *argv[]) {
   }
   fclose(fhnd);
 
+  ////////////////////////////////////////////////////////////
+  // output of sparse matrix
+  ////////////////////////////////////////////////////////////
+  size_t nnz=0;
+  for(int i=0; i<N_nodes; i++) {
+    for(int j=0; j<N_nodes; j++) {
+      nnz += gsl_matrix_get(W,i,j)>1.0;
+    }
+  }
+  strcat(FN,".sparse");
+  fhnd = fopen(FN, "w");
+  fwrite("SPARSE\x0\0x1",8,1,fhnd);
+  size_t nr,nc;
+  nr=nc=N_nodes;
+  fwrite(&nr,8,1,fhnd);
+  fwrite(&nc,8,1,fhnd);
+  fwrite(&nnz,8,1,fhnd);
+  for (int32_t i=0; i<N_nodes; i++) {
+    for (int32_t j=0; j<N_nodes; j++) {
+      if (gsl_matrix_get(W,i,j) > 1.0) {
+        fwrite(&i, 4, 1, fhnd);
+        fwrite(&j, 4, 1, fhnd);
+      }
+    }
+  }
+  fclose(fhnd);
   
 
   ////////////////////////////////////////////////////////////
