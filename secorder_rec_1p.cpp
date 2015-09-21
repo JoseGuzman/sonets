@@ -246,7 +246,7 @@ int gen_corr_gaussian(const int N_nodes, double sqrt_diag, double sqrt_recip,
   double matrix_sum = 0.0;
 
   for (int i=0; i<N_nodes;i++){
-    int i_tda=i*tda;
+    size_t i_tda=i*tda;
     for (int j=0; j<N_nodes;j++){
       // no connection from node onto itself
       if(j==i)
@@ -272,7 +272,7 @@ int gen_corr_gaussian(const int N_nodes, double sqrt_diag, double sqrt_recip,
   matrix_sum *= 0.5;
 
   for (int i=0; i<N_nodes; i++){
-    int i_tda=i*tda;
+    size_t i_tda=i*tda;
     for (int j=0; j<N_nodes; j++){
       // no connection from node onto itself
       if(i==j)

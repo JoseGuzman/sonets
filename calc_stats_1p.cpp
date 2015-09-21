@@ -58,7 +58,7 @@ int calc_N_motifs(gsl_matrix_float *W, int N_nodes,
   for(int i=0; i<N_nodes;i++)
     row_sums[i]=column_sums[i]=0.0;
   for(int i=0; i<N_nodes;i++) {
-    int i_tda = i*tda;
+    size_t i_tda = i*tda;
     for(int j=0; j<N_nodes;j++) {
       double temp=thedata[i_tda+j];
       row_sums[i]+=temp;

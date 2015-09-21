@@ -467,7 +467,7 @@ int gen_corr_gaussian(const int N_nodes[2],
 	row_sums[i]=col_sums[i]=0.0;
 
       for(int i=N_shift[ntype1]; i<N_nodes[ntype1]+N_shift[ntype1]; i++) {
-	int i_tda=i*tda;
+	size_t i_tda=i*tda;
       
 	for(int j=N_shift[ntype2]; j<N_nodes[ntype2]+N_shift[ntype2]; j++) {
 	  // no connection from node onto itself
@@ -493,7 +493,7 @@ int gen_corr_gaussian(const int N_nodes[2],
       }
       for(int ntype3=0; ntype3<2; ntype3++) {
 	for(int k=N_shift[ntype3]; k<N_nodes[ntype3]+N_shift[ntype3]; k++) {
-	  int k_tda=k*tda;
+	  size_t k_tda=k*tda;
 	
 	  for(int i=N_shift[ntype1]; i<N_nodes[ntype1]+N_shift[ntype1]; i++) {
 	    int i_tda=i*tda;
