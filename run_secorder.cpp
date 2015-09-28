@@ -110,9 +110,11 @@ int main(int argc, char *argv[]) {
   fwrite(&nr,8,1,fhnd);
   fwrite(&nc,8,1,fhnd);
   fwrite(&nnz,8,1,fhnd);
-  for (int32_t i=0; i<N_nodes; i++) {
-    for (int32_t j=0; j<N_nodes; j++) {
-      if (gsl_matrix_float_get(W,i,j) > 1.0) {
+  for (int i=0; i<N_nodes; i++) {
+    for (int j=0; j<N_nodes; j++) {
+      int t = gsl_matrix_float_get(W,i,j) > 1.0;
+      gsl_matrix_float_set(W,i,j,(float)t);
+      if (t) {
         fwrite(&i, 4, 1, fhnd);
         fwrite(&j, 4, 1, fhnd);
       }
