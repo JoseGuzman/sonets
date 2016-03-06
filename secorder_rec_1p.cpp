@@ -1,3 +1,8 @@
+#include <string.h>
+#include <time.h>
+#include <sys/time.h>
+
+
 #include <iostream>
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_blas.h>
@@ -11,10 +16,13 @@
 
 using namespace std;
 
+extern struct timeval T0;
+
 // declare auxiliary functions
 int gen_corr_gaussian(const int N_nodes, double sqrt_diag, double sqrt_recip,
 		      double sqrt_conv, double sqrt_div, double sqrt_chain,
-              double sqrt_noshare, gsl_matrix_float *thevars, gsl_rng *rng);
+              double sqrt_noshare, gsl_matrix_float *thevars, gsl_rng *rng,
+              const char *algorithm);
 int calc_gaus_covs(gsl_matrix_float *W_gaus, int N_nodes,
 		   double &sigma, double &cov_recip,
 		   double &cov_conv, double &cov_div,
@@ -52,7 +60,7 @@ int calc_gaus_covs(gsl_matrix_float *W_gaus, int N_nodes,
 gsl_matrix_float* secorder_rec_1p(int N_nodes, double p,
 			    double alpha_recip, double alpha_conv,
 			    double alpha_div, double alpha_chain,
-			    gsl_rng *rng) {
+			    gsl_rng *rng, const char *algorithm) {
 
   int calc_covs=0;  // if nonzero, calculate covariance of Gaussian
 
@@ -62,7 +70,10 @@ gsl_matrix_float* secorder_rec_1p(int N_nodes, double p,
 
   int status;
 
-  cout << "Beginning secorder_rec_1p with N_nodes = " << N_nodes  << "\n";
+  struct timeval T1,dT;
+  gettimeofday(&T1,NULL);
+  timersub(&T1,&T0, &dT);
+  fprintf(stdout,"t=%li.%06li\t%s N=%i %s (%s line %i)\n",dT.tv_sec,dT.tv_usec,__func__,N_nodes,algorithm,__FILE__,__LINE__);
   
   if(print_palpha) {
     cout << "p = " << p << "\n";
@@ -121,7 +132,9 @@ gsl_matrix_float* secorder_rec_1p(int N_nodes, double p,
 	 << "\n";
     cout.flush();
   }
-
+  gettimeofday(&T1,NULL);
+  timersub(&T1,&T0, &dT);
+  fprintf(stdout,"t=%li.%06li\t %s step1 (%s line %i)\n",dT.tv_sec,dT.tv_usec,__func__,__FILE__,__LINE__);
   
   ///////////////////////////////////////////////////////////////////
   // Step 2: Take the square root of the Gaussian's covariance matrix
@@ -143,6 +156,9 @@ gsl_matrix_float* secorder_rec_1p(int N_nodes, double p,
     cerr << "Could not find real square root\n";
     return 0;
   }
+  gettimeofday(&T1,NULL);
+  timersub(&T1,&T0, &dT);
+  fprintf(stdout,"t=%li.%06li\t %s step2 (%s line %i)\n",dT.tv_sec,dT.tv_usec,__func__,__FILE__,__LINE__);
  
   if(print_sqrt) {
     cout << "sqrt_diag = " << sqrt_diag
@@ -169,11 +185,18 @@ gsl_matrix_float* secorder_rec_1p(int N_nodes, double p,
   cout << "Generating gaussian matrix...";
   cout.flush();
 
+  gettimeofday(&T1,NULL);
+  timersub(&T1,&T0, &dT);
+  fprintf(stdout,"t=%li.%06li\t %s step3 (%s line %i)\n",dT.tv_sec,dT.tv_usec,__func__,__FILE__,__LINE__);
+
   gen_corr_gaussian(N_nodes, sqrt_diag, sqrt_recip, sqrt_conv, 
-		    sqrt_div, sqrt_chain, sqrt_noshare, W_gaus, rng);
+		    sqrt_div, sqrt_chain, sqrt_noshare, W_gaus, rng, algorithm);
 
   cout << "done\n";
   cout.flush();
+  gettimeofday(&T1,NULL);
+  timersub(&T1,&T0, &dT);
+  fprintf(stdout,"t=%li.%06li\t %s step3 (%s line %i)\n",dT.tv_sec,dT.tv_usec,__func__,__FILE__,__LINE__);
   
 
   ////////////////////////////////////////////////////////////
@@ -204,6 +227,9 @@ gsl_matrix_float* secorder_rec_1p(int N_nodes, double p,
 	 << ", cov_noshare = " << cov_noshare
 	 << "\n";
     cout.flush();
+  gettimeofday(&T1,NULL);
+  timersub(&T1,&T0, &dT);
+  fprintf(stdout,"t=%li.%06li\t %s step4 (%s line %i)\n",dT.tv_sec,dT.tv_usec,__func__,__FILE__,__LINE__);
 
   }
 
@@ -224,7 +250,13 @@ gsl_matrix_float* secorder_rec_1p(int N_nodes, double p,
 ////////////////////////////////////////////////////////////
 int gen_corr_gaussian(const int N_nodes, double sqrt_diag, double sqrt_recip,
 		      double sqrt_conv, double sqrt_div, double sqrt_chain,
-              double sqrt_noshare, gsl_matrix_float *thevars, gsl_rng *rng) {
+              double sqrt_noshare, gsl_matrix_float *thevars, gsl_rng *rng, const char *algorithm) {
+
+  struct timeval localT0,T1,dT;
+
+  gettimeofday(&T1,NULL);
+  timersub(&T1,&T0, &dT);
+  fprintf(stdout,"t=%li.%06li\t%s init (%s line %i)\n",dT.tv_sec,dT.tv_usec,__func__,__FILE__,__LINE__);
 
   gsl_matrix_float_set_zero(thevars);
   float *thedata = thevars->data;
@@ -245,32 +277,166 @@ int gen_corr_gaussian(const int N_nodes, double sqrt_diag, double sqrt_recip,
     row_sums[i]=column_sums[i]=0.0;
   double matrix_sum = 0.0;
 
-  for (int i=0; i<N_nodes;i++){
-    size_t i_tda=i*tda;
-    for (int j=0; j<N_nodes;j++){
+  gettimeofday(&T1,NULL);
+  timersub(&T1,&T0, &dT);
+  fprintf(stdout,"t=%li.%06li\t%s init_done (%s line %i)\n",dT.tv_sec,dT.tv_usec,__func__,__FILE__,__LINE__);
+
+  double a = (sqrt_diag-sqrt_conv-sqrt_div+sqrt_noshare);
+  double b = (sqrt_recip-2.0*sqrt_chain+sqrt_noshare);
+  int BLKSIZE=1;
+
+  gettimeofday(&localT0,NULL);
+
+if ((algorithm==NULL) || !strncmp(algorithm,"S",1)) {
+
+  for (int i = 0; i < N_nodes; i++) {
+    size_t i_tda = i * tda;
+    for (int j = 0; j < N_nodes; j++) {
       // no connection from node onto itself
       if(j==i)
-	continue;
+          continue;
       
-      double gaus_ind= gsl_ran_gaussian(rng,1.0);
+      double gaus_ind= gsl_ran_ugaussian(rng);
 
       // add diagonal contribution
-      thedata[i_tda + j] += gaus_ind*(sqrt_diag-sqrt_conv-sqrt_div+sqrt_noshare);
+      thedata[i_tda + j] += gaus_ind * a;
 
       // add reciprocal contribution
-      thedata[j*tda + i] += gaus_ind*(sqrt_recip-2.0*sqrt_chain+sqrt_noshare);
+      thedata[j*tda + i] += gaus_ind * b;
 
-      row_sums[i] += gaus_ind;
+      row_sums[i]    += gaus_ind;
       column_sums[j] += gaus_ind;
+    }
+
+    if ( (i % (BLKSIZE<<4)) == 0) {
+      gettimeofday(&T1,NULL);
+      timersub(&T1,&localT0, &dT);
+      double t1 = dT.tv_sec+dT.tv_usec*1e-6;
+      double test = t1*N_nodes/(i+1);
+      fprintf(stdout,"S %6i t=%f/%f %s (%s line %i)\n", i+1, t1, test, __func__, __FILE__, __LINE__);
+      fflush(stdout);
     }
   }
 
+}
+else if (!strncmp(algorithm,"T",1)) {
+
+  for (int i = 0; i < N_nodes; i++) {
+    size_t i_tda = i * tda;
+    for (int j = i+1; j < N_nodes; j++) {
+      // no connection from node onto itself
+
+      double gaus_ind;
+
+      /**** upper triangle matrix elements ****/
+      gaus_ind = gsl_ran_ugaussian(rng);
+
+      // add diagonal contribution
+      thedata[i_tda + j] += gaus_ind*a;
+
+      // add reciprocal contribution
+      thedata[j*tda + i] += gaus_ind*b;
+
+      row_sums[i]    += gaus_ind;
+      column_sums[j] += gaus_ind;
+
+
+
+      /**** lower triangle matrix elements ****/
+      gaus_ind = gsl_ran_ugaussian(rng);
+
+      // add diagonal contribution
+      thedata[j*tda + i] += gaus_ind*a;
+
+      // add reciprocal contribution
+      thedata[i_tda + j] += gaus_ind*b;
+
+
+      row_sums[j]    += gaus_ind;
+      column_sums[i] += gaus_ind;
+
+    }
+    if ( (i % (BLKSIZE<<4)) == 0) {
+      gettimeofday(&T1,NULL);
+      timersub(&T1,&localT0, &dT);
+      double t1 = dT.tv_sec+dT.tv_usec*1e-6;
+      double test = t1*N_nodes*N_nodes/(2 * N_nodes * (i+1) - (i+1)*(i+1));
+      fprintf(stdout,"%c %6i t=%f/%f %s (%s line %i)\n", algorithm[0], i+1, t1, test, __func__, __FILE__, __LINE__);
+      fflush(stdout);
+    }
+  }
+
+}
+else if (algorithm[0]=='B') {
+  BLKSIZE=atoi(algorithm+1);
+  int i=0;
+  for (int ii = 0;  ii < N_nodes; ii+=BLKSIZE) {
+  for (int jj = ii; jj < N_nodes; jj+=BLKSIZE) {
+  for (i = ii; i < min(N_nodes, ii+BLKSIZE); i++) {
+      size_t i_tda = i * tda;
+  for (int j = max(i+1,jj); j < min(N_nodes, jj+BLKSIZE); j++) {
+      // no connection from node onto itself
+      size_t j_tda = j * tda;
+
+
+      double gaus_ind;
+
+      /**** upper triangle matrix elements ****/
+      gaus_ind = gsl_ran_ugaussian(rng);
+
+      // add diagonal contribution
+      thedata[i_tda + j] += gaus_ind*a;
+
+      // add reciprocal contribution
+      thedata[j_tda + i] += gaus_ind*b;
+
+      row_sums[i]    += gaus_ind;
+      column_sums[j] += gaus_ind;
+
+
+
+      /**** lower triangle matrix elements ****/
+      gaus_ind = gsl_ran_ugaussian(rng);
+
+      // add diagonal contribution
+      thedata[j_tda + i] += gaus_ind*a;
+
+      // add reciprocal contribution
+      thedata[i_tda + j] += gaus_ind*b;
+
+
+      row_sums[j]    += gaus_ind;
+      column_sums[i] += gaus_ind;
+
+    }
+    }
+    }
+
+    if ( (ii % (BLKSIZE<<4)) == 0) {
+      gettimeofday(&T1,NULL);
+      timersub(&T1,&localT0, &dT);
+      double t1 = dT.tv_sec+dT.tv_usec*1e-6;
+      double test = t1*(size_t)N_nodes*N_nodes/(2.0*N_nodes*i-i*i );
+      fprintf(stdout,"%s %5i t=%f/%f %s (%s line %i)\n", algorithm, i, t1, test, __func__, __FILE__, __LINE__);
+      fflush(stdout);
+    }
+  }
+}
+
+  gettimeofday(&T1,NULL);
+  timersub(&T1,&T0, &dT);
+  fprintf(stdout,"t=%li.%06li\t%s matrix_sum_start (%s line %i)\n",dT.tv_sec,dT.tv_usec,__func__,__FILE__,__LINE__);
   // Check danger of Rounding errors, do a SUM over column_sums or row_sums instead
   for (int i=0; i<N_nodes; i++) {
     matrix_sum += row_sums[i] + column_sums[i];
   }
   matrix_sum *= 0.5;
 
+  gettimeofday(&T1,NULL);
+  timersub(&T1,&T0, &dT);
+  fprintf(stdout,"t=%li.%06li\t%s matrix_sum_done (%s line %i)\n",dT.tv_sec,dT.tv_usec,__func__,__FILE__,__LINE__);
+
+//#pragma omp parallel for
   for (int i=0; i<N_nodes; i++){
     size_t i_tda=i*tda;
     for (int j=0; j<N_nodes; j++){
@@ -285,6 +451,9 @@ int gen_corr_gaussian(const int N_nodes, double sqrt_diag, double sqrt_recip,
     }
   }
 
+  gettimeofday(&T1,NULL);
+  timersub(&T1,&T0, &dT);
+  fprintf(stdout,"t=%li.%06li\t%s done (%s line %i)\n",dT.tv_sec,dT.tv_usec,__func__,__FILE__,__LINE__);
   return 0;
 }
 

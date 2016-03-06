@@ -1,3 +1,5 @@
+#include <sys/time.h>
+
 #include <iostream>
 #include <stdint.h>
 #include <string.h>
@@ -7,6 +9,7 @@
 #include "secorder_rec_1p.hpp"
 #include "calc_stats_1p.hpp"
 
+struct timeval T0;
 
 using namespace std;
 
@@ -22,11 +25,14 @@ int main(int argc, char *argv[]) {
   // alpha_div    determines covariance of divergent connections
   // alpha_chain  determines covariance of chain connections
   // seed         seed for the random number generator (optional)
+  // algorithm    S(standard), T(triangle), B16, B32, B64 (Block with size)
   ///////////////////////////////////////////////////////////////
 
+  struct timeval t0,dT;
+  gettimeofday(&T0,NULL);
  
-  if(argc < 7 || argc > 8) {
-    cerr << "Requires six or seven parameters: N_nodes p alpha_recip alpha_conv alpha_div alpha_chain [seed]\n";
+  if ((argc < 7) || (argc > 9)) {
+    cerr << "Requires six, seven, or eight parameters: N_nodes p alpha_recip alpha_conv alpha_div alpha_chain [seed] [algorithm]\n";
     exit(-1);
   }
 
@@ -39,13 +45,17 @@ int main(int argc, char *argv[]) {
 
   gsl_rng *rng = gsl_rng_alloc(gsl_rng_mt19937);
 
-
   int deterministic_seed=0;
   int rng_seed = 0;
-  if(argc >7) {
-    deterministic_seed=1;
-    rng_seed = atoi(argv[7]);    
+  int count = 7;
+  if(argc > 7) {
+      if (~isalpha(argv[count][0])) {
+        deterministic_seed=1;
+        rng_seed = atoi(argv[count]);
+	count++;
+      }
   }
+  const char *algorithm=argv[count];
 
   // set the seed
   // if deterministic_seed, use rng_seed for seed
@@ -56,9 +66,18 @@ int main(int argc, char *argv[]) {
     gsl_rng_set(rng, time(NULL));
   
   gsl_matrix_float *W;
+
+  gettimeofday(&t0,NULL);
+  timersub(&t0,&T0,&dT);
+  fprintf(stdout,"t=%li.%06li\t%s init (%s line %i)\n",dT.tv_sec,dT.tv_usec,__func__,__FILE__,__LINE__);
+
   W=secorder_rec_1p(N_nodes,p,  alpha_recip, alpha_conv, alpha_div, alpha_chain,
-		    rng);
+		    rng, algorithm);
   
+  gettimeofday(&t0,NULL);
+  timersub(&t0,&T0,&dT);
+  fprintf(stdout,"t=%li.%06li\t%s computed (%s line %i)\n",dT.tv_sec,dT.tv_usec,__func__,__FILE__,__LINE__);
+
     // if failed to generate a matrix, write error and quit
   if(!W) {
     cerr << "Failed to generate the matrix\n";
@@ -70,15 +89,19 @@ int main(int argc, char *argv[]) {
   mkdir("data",0755);  // make data directory, if it doesn't exist
   char FNbase[200];
   if(deterministic_seed)
-    sprintf(FNbase,"_%i_%1.3f_%1.3f_%1.3f_%1.3f_%1.3f_%i",N_nodes,p,alpha_recip, alpha_conv, alpha_div, alpha_chain, rng_seed);
+    sprintf(FNbase,"_%i_%1.3f_%1.3f_%1.3f_%1.3f_%1.3f_%i%s",N_nodes,p,alpha_recip, alpha_conv, alpha_div, alpha_chain, rng_seed, algorithm);
   else
-    sprintf(FNbase,"_%i_%1.3f_%1.3f_%1.3f_%1.3f_%1.3f",N_nodes,p,alpha_recip, alpha_conv, alpha_div, alpha_chain);
+    sprintf(FNbase,"_%i_%1.3f_%1.3f_%1.3f_%1.3f_%1.3f%s",N_nodes,p,alpha_recip, alpha_conv, alpha_div, alpha_chain, algorithm);
   
   char FN[2000];
   FILE *fhnd;
   strcpy(FN, "data/w");
   strcat(FN, FNbase);
   strcat(FN, ".dat");
+
+if (N_nodes < 35000) {
+  // Large matrices are stored only in sparse from
+  // Thise are used only for debugging
   fhnd = fopen(FN, "w");
   if(fhnd==NULL) {
     cerr << "Couldn't open outfile file " << FN << "\n";
@@ -92,6 +115,12 @@ int main(int argc, char *argv[]) {
     fprintf(fhnd,"\n");
   }
   fclose(fhnd);
+
+  gettimeofday(&t0,NULL);
+  timersub(&t0,&T0,&dT);
+  fprintf(stdout,"t=%li.%06li\t%s output_full (%s line %i)\n",dT.tv_sec,dT.tv_usec,__func__,__FILE__,__LINE__);
+
+}
 
   ////////////////////////////////////////////////////////////
   // output of sparse matrix
@@ -121,12 +150,18 @@ int main(int argc, char *argv[]) {
     }
   }
   fclose(fhnd);
+
+  gettimeofday(&t0,NULL);
+  timersub(&t0,&T0,&dT);
+  fprintf(stdout,"t=%li.%06li\t%s output_sparse (%s line %i)\n",dT.tv_sec,dT.tv_usec,__func__,__FILE__,__LINE__);
   
 
   ////////////////////////////////////////////////////////////
   // Calculate the covariance structure the adjacency matrix
   // This should approximately agree with the input alphas
   ////////////////////////////////////////////////////////////
+
+if (N_nodes > 35000) return 0;
 
   cout << "Testing statistics of W ...";
   cout.flush();
@@ -160,4 +195,7 @@ int main(int argc, char *argv[]) {
        << ", alpha_chain = " << alphahat_chain
        << ", alpha_other = " << alphahat_other << "\n";
   
+  gettimeofday(&t0,NULL);
+  timersub(&t0,&T0,&dT);
+  fprintf(stdout,"t=%li.%06li\t%s test_alphas (%s line %i)\n",dT.tv_sec,dT.tv_usec,__func__,__FILE__,__LINE__);
 }
