@@ -35,7 +35,6 @@ int main(int argc, char *argv[]) {
     cerr << "Requires six, seven, or eight parameters: N_nodes p alpha_recip alpha_conv alpha_div alpha_chain [seed] [algorithm]\n";
     exit(-1);
   }
-
   int N_nodes = atoi(argv[1]);
   double p = atof(argv[2]);
   double alpha_recip = atof(argv[3]);
@@ -77,6 +76,7 @@ int main(int argc, char *argv[]) {
   gettimeofday(&t0,NULL);
   timersub(&t0,&T0,&dT);
   fprintf(stdout,"t=%li.%06li\t%s computed (%s line %i)\n",dT.tv_sec,dT.tv_usec,__func__,__FILE__,__LINE__);
+  fflush(stdout);
 
     // if failed to generate a matrix, write error and quit
   if(!W) {
@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
   strcat(FN, FNbase);
   strcat(FN, ".dat");
 
-if (N_nodes < 35000) {
+#if 0
   // Large matrices are stored only in sparse from
   // Thise are used only for debugging
   fhnd = fopen(FN, "w");
@@ -119,8 +119,7 @@ if (N_nodes < 35000) {
   gettimeofday(&t0,NULL);
   timersub(&t0,&T0,&dT);
   fprintf(stdout,"t=%li.%06li\t%s output_full (%s line %i)\n",dT.tv_sec,dT.tv_usec,__func__,__FILE__,__LINE__);
-
-}
+#endif
 
   ////////////////////////////////////////////////////////////
   // output of sparse matrix
@@ -132,7 +131,12 @@ if (N_nodes < 35000) {
     }
   }
   strcat(FN,".sparse");
+  fprintf(stdout, "Write to File %s\n",FN);
   fhnd = fopen(FN, "w");
+  if(fhnd==NULL) {
+      cerr << "Couldn't open outfile file " << FN << "\n";
+      exit(-1);
+  }
   fwrite("SPARSE\x0\0x1",8,1,fhnd);
   size_t nr,nc;
   nr=nc=N_nodes;

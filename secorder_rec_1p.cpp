@@ -188,6 +188,7 @@ gsl_matrix_float* secorder_rec_1p(int N_nodes, double p,
   gettimeofday(&T1,NULL);
   timersub(&T1,&T0, &dT);
   fprintf(stdout,"t=%li.%06li\t %s step3 (%s line %i)\n",dT.tv_sec,dT.tv_usec,__func__,__FILE__,__LINE__);
+  fflush(stdout);
 
   gen_corr_gaussian(N_nodes, sqrt_diag, sqrt_recip, sqrt_conv, 
 		    sqrt_div, sqrt_chain, sqrt_noshare, W_gaus, rng, algorithm);
@@ -197,7 +198,7 @@ gsl_matrix_float* secorder_rec_1p(int N_nodes, double p,
   gettimeofday(&T1,NULL);
   timersub(&T1,&T0, &dT);
   fprintf(stdout,"t=%li.%06li\t %s step3 (%s line %i)\n",dT.tv_sec,dT.tv_usec,__func__,__FILE__,__LINE__);
-  
+  fflush(stdout);
 
   ////////////////////////////////////////////////////////////
   // Optional step 4: Calculate the covariance structure
@@ -227,9 +228,10 @@ gsl_matrix_float* secorder_rec_1p(int N_nodes, double p,
 	 << ", cov_noshare = " << cov_noshare
 	 << "\n";
     cout.flush();
-  gettimeofday(&T1,NULL);
-  timersub(&T1,&T0, &dT);
-  fprintf(stdout,"t=%li.%06li\t %s step4 (%s line %i)\n",dT.tv_sec,dT.tv_usec,__func__,__FILE__,__LINE__);
+    gettimeofday(&T1,NULL);
+    timersub(&T1,&T0, &dT);
+    fprintf(stdout,"t=%li.%06li\t %s step4 (%s line %i)\n",dT.tv_sec,dT.tv_usec,__func__,__FILE__,__LINE__);
+    fflush(stdout);
 
   }
 
@@ -257,6 +259,7 @@ int gen_corr_gaussian(const int N_nodes, double sqrt_diag, double sqrt_recip,
   gettimeofday(&T1,NULL);
   timersub(&T1,&T0, &dT);
   fprintf(stdout,"t=%li.%06li\t%s init (%s line %i)\n",dT.tv_sec,dT.tv_usec,__func__,__FILE__,__LINE__);
+  fflush(stdout);
 
   gsl_matrix_float_set_zero(thevars);
   float *thedata = thevars->data;
@@ -280,6 +283,7 @@ int gen_corr_gaussian(const int N_nodes, double sqrt_diag, double sqrt_recip,
   gettimeofday(&T1,NULL);
   timersub(&T1,&T0, &dT);
   fprintf(stdout,"t=%li.%06li\t%s init_done (%s line %i)\n",dT.tv_sec,dT.tv_usec,__func__,__FILE__,__LINE__);
+  fflush(stdout);
 
   double a = (sqrt_diag-sqrt_conv-sqrt_div+sqrt_noshare);
   double b = (sqrt_recip-2.0*sqrt_chain+sqrt_noshare);
@@ -365,8 +369,8 @@ else if (!strncmp(algorithm,"T",1)) {
       fflush(stdout);
     }
   }
-
 }
+
 else if (algorithm[0]=='B') {
   BLKSIZE=atoi(algorithm+1);
   int i=0;
@@ -423,6 +427,184 @@ else if (algorithm[0]=='B') {
   }
 }
 
+else if (algorithm[0]=='P') {
+
+  const int MAXBLKSIZE=32;
+  BLKSIZE=atoi(algorithm+1);
+  if (BLKSIZE>MAXBLKSIZE) exit(-1);
+
+  size_t N = N_nodes/BLKSIZE + (N_nodes%BLKSIZE > 0);
+
+  double s =  gsl_ran_flat (rng, 0.0, (double)N_nodes * N_nodes);
+  size_t progress0=0;
+  size_t progress1=N_nodes;
+
+
+#pragma omp parallel for shared(thedata,row_sums,column_sums)
+  for (size_t kk = 0;  kk < N*N; kk++) {
+	int ii = (kk / N) * BLKSIZE;
+	int jj = (kk % N) * BLKSIZE;
+
+	double local_row_sums[MAXBLKSIZE];
+	double local_column_sums[MAXBLKSIZE];
+	for (int i=0; i<BLKSIZE; i++) {
+		local_row_sums[i]=0;
+		local_column_sums[i]=0;
+	}
+
+	gsl_rng *local_rng = gsl_rng_alloc (gsl_rng_mt19937);
+	gsl_rng_set (local_rng, kk+(int)floor(s));
+
+  for (int i = ii; i < min(N_nodes, ii+BLKSIZE); i++) {
+      size_t i_tda = i * tda;
+  for (int j = jj; j < min(N_nodes, jj+BLKSIZE); j++) {
+
+      // no connection from node onto itself
+	if (i==j) continue;
+
+      double gaus_ind;
+
+      /**** upper triangle matrix elements ****/
+      gaus_ind = gsl_ran_ugaussian(rng);
+
+      // add diagonal contribution
+      thedata[i_tda + j] += gaus_ind*a;
+
+      // add reciprocal contribution
+      thedata[j*tda + i] += gaus_ind*b;
+
+      local_row_sums[i-ii]    += gaus_ind;
+      local_column_sums[j-jj] += gaus_ind;
+
+    }
+    }
+      gsl_rng_free (local_rng);
+
+//#pragma omp barrier
+	// reduction step
+	for (int i=0; i<BLKSIZE; i++) {
+		row_sums[i+ii]   +=local_row_sums[i];
+		column_sums[i+jj]+=local_column_sums[i];
+	}
+
+/*
+	progress0+=1;
+	if (progress0 > progress1) {
+		progress1 += N_nodes*BLKSIZE;
+		gettimeofday(&T1,NULL);
+		timersub(&T1,&localT0, &dT);
+		double t1 = dT.tv_sec+dT.tv_usec*1e-6;
+		double test = (t1*N_nodes)/(2.0*progress0);
+		fprintf(stdout,"%s %5i t=%f/%f (%li/%li) %s (%s line %i)\n", algorithm, N_nodes, t1, test,progress0,progress1, __func__, __FILE__, __LINE__);
+		fflush(stdout);
+	}
+*/
+  }
+
+
+}
+
+else if (algorithm[0]=='X') {
+
+  const int MAXBLKSIZE=32;
+  BLKSIZE=atoi(algorithm+1);
+  if (BLKSIZE>MAXBLKSIZE) exit(-1);
+
+  size_t N = N_nodes/BLKSIZE + (N_nodes%BLKSIZE > 0);
+
+  double s =  gsl_ran_flat (rng, 0.0, (double)N_nodes * N_nodes);
+  size_t progress0=0;
+  size_t progress1=N_nodes;
+
+
+#pragma omp parallel for shared(thedata,row_sums,column_sums)
+  for (size_t kk = 0;  kk < N*N; kk++) {
+	int ii = (kk / N) * BLKSIZE;
+	int jj = (kk % N) * BLKSIZE;
+	if (jj<ii) continue;
+
+	double local_row_sums_i[MAXBLKSIZE];
+	double local_column_sums_i[MAXBLKSIZE];
+	double local_row_sums_j[MAXBLKSIZE];
+	double local_column_sums_j[MAXBLKSIZE];
+	for (int i=0; i<BLKSIZE; i++) {
+		local_row_sums_i[i]=0;
+		local_column_sums_i[i]=0;
+		local_row_sums_j[i]=0;
+		local_column_sums_j[i]=0;
+	}
+
+	gsl_rng *local_rng = gsl_rng_alloc (gsl_rng_mt19937);
+	gsl_rng_set (local_rng, kk+(int)floor(s));
+
+  for (int i = ii; i < min(N_nodes, ii+BLKSIZE); i++) {
+      size_t i_tda = i * tda;
+  for (int j = max(i+1,jj); j < min(N_nodes, jj+BLKSIZE); j++) {
+      // no connection from node onto itself
+      size_t j_tda = j * tda;
+
+
+      double gaus_ind;
+
+      /**** upper triangle matrix elements ****/
+      gaus_ind = gsl_ran_ugaussian(local_rng);
+
+      // add diagonal contribution
+      thedata[i_tda + j] += gaus_ind*a;
+
+      // add reciprocal contribution
+      thedata[j_tda + i] += gaus_ind*b;
+
+      local_row_sums_i[i-ii]    += gaus_ind;
+      local_column_sums_j[j-jj] += gaus_ind;
+
+
+
+      /**** lower triangle matrix elements ****/
+      gaus_ind = gsl_ran_ugaussian(local_rng);
+
+      // add diagonal contribution
+      thedata[j_tda + i] += gaus_ind*a;
+
+      // add reciprocal contribution
+      thedata[i_tda + j] += gaus_ind*b;
+
+
+      local_row_sums_j[j-jj]    += gaus_ind;
+      local_column_sums_i[i-ii] += gaus_ind;
+
+    }
+    }
+      gsl_rng_free (local_rng);
+
+//#pragma omp barrier
+	// reduction step
+	for (int i=0; i<BLKSIZE; i++) {
+		row_sums[i+ii]   +=local_row_sums_i[i];
+		column_sums[i+ii]+=local_column_sums_i[i];
+	}
+	for (int j=0; j<BLKSIZE; j++) {
+		row_sums[j+jj]   +=local_row_sums_j[j];
+		column_sums[j+jj]+=local_column_sums_j[j];
+	}
+
+/*
+	progress0+=1;
+	if (progress0 > progress1) {
+		progress1 += N_nodes*BLKSIZE;
+		gettimeofday(&T1,NULL);
+		timersub(&T1,&localT0, &dT);
+		double t1 = dT.tv_sec+dT.tv_usec*1e-6;
+		double test = (t1*N_nodes)/(2.0*progress0);
+		fprintf(stdout,"%s %5i t=%f/%f (%li/%li) %s (%s line %i)\n", algorithm, N_nodes, t1, test,progress0,progress1, __func__, __FILE__, __LINE__);
+		fflush(stdout);
+	}
+*/
+  }
+
+
+}
+
   gettimeofday(&T1,NULL);
   timersub(&T1,&T0, &dT);
   fprintf(stdout,"t=%li.%06li\t%s matrix_sum_start (%s line %i)\n",dT.tv_sec,dT.tv_usec,__func__,__FILE__,__LINE__);
@@ -436,13 +618,12 @@ else if (algorithm[0]=='B') {
   timersub(&T1,&T0, &dT);
   fprintf(stdout,"t=%li.%06li\t%s matrix_sum_done (%s line %i)\n",dT.tv_sec,dT.tv_usec,__func__,__FILE__,__LINE__);
 
-//#pragma omp parallel for
-  for (int i=0; i<N_nodes; i++){
+#pragma omp parallel for shared(thedata)
+  for (int i=0; i<N_nodes; i++) {
     size_t i_tda=i*tda;
-    for (int j=0; j<N_nodes; j++){
+    for (int j=0; j<N_nodes; j++) {
       // no connection from node onto itself
-      if(i==j)
-	continue;
+      if(i==j) continue;
       
       thedata[i_tda+j]+=(sqrt_conv-sqrt_noshare)*row_sums[i]+
 	(sqrt_div-sqrt_noshare)*column_sums[j]+

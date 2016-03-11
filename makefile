@@ -1,11 +1,11 @@
 CC = g++
-C_OPTIMIZE_SWITCH = -O2 -DHAVE_INLINE -DGSL_RANGE_CHECK_OFF
-LIBS = -lgsl -lgslcblas
+C_OPTIMIZE_SWITCH = -O3 -DHAVE_INLINE -DGSL_RANGE_CHECK_OFF
+LIBS = -lgsl -lgslcblas -lgomp
 
-CFLAGS = -Wall ${C_OPTIMIZE_SWITCH}  
+CFLAGS = -Wall ${C_OPTIMIZE_SWITCH} -fopenmp
 
 run_secorder: run_secorder.o secorder_rec_1p.o calc_sqrtcov_rec_1p.o calc_rhos.o calc_stats_1p.o
-	${CC} run_secorder.o secorder_rec_1p.o calc_sqrtcov_rec_1p.o calc_rhos.o calc_stats_1p.o -o run_secorder ${LIBS}
+	${CC} run_secorder.o secorder_rec_1p.o calc_sqrtcov_rec_1p.o calc_rhos.o calc_stats_1p.o -o $@ ${LIBS}
 
 run_secorder_2p: run_secorder_2p.o secorder_rec_2p.o calc_sqrtcov_rec_2p.o calc_rhos.o calc_stats_2p.o
 	${CC} run_secorder_2p.o secorder_rec_2p.o calc_sqrtcov_rec_2p.o calc_rhos.o calc_stats_2p.o -o run_secorder_2p ${LIBS}
@@ -25,4 +25,4 @@ calc_stats_2p.o: calc_stats_2p.hpp
 	${CC} -c ${CFLAGS} $<
 
 clean:
-	\rm *.o
+	rm *.o

@@ -179,6 +179,14 @@ int calc_sqrtcov_given_rhos_large_N
     // if can't get real solution to sqrt_diag, original system did
     // not have a real solution (at least for large N)
     cout << "Can't calculate sqrt_diag\n";
+    cout << "temp1=" << temp1
+         << ", temp2=" << temp2
+         << ", sigma=" << sigma
+         << ", sqrt_conv=" << sqrt_conv
+         << ", sqrt_div=" << sqrt_div
+         << ", sqrt_chain=" << sqrt_chain
+         << ", rho_recip=" << rho_recip << "\n";
+
     gsl_eigen_symmv_free(work_eig);
     gsl_matrix_free(A);
     gsl_matrix_free(sqrtA);
