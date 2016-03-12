@@ -125,10 +125,14 @@ int main(int argc, char *argv[]) {
   // output of sparse matrix
   ////////////////////////////////////////////////////////////
   size_t nnz=0;
+  uint32_t *rs = (uint32_t*)malloc(N_nodes*4);
   for(int i=0; i<N_nodes; i++) {
+    uint32_t n=0;
     for(int j=0; j<N_nodes; j++) {
-      nnz += gsl_matrix_float_get(W,i,j)>1.0;
+      n += gsl_matrix_float_get(W,i,j)>1.0;
     }
+    nnz+=n;
+    rs[i]=n;
   }
   strcat(FN,".sparse");
   fprintf(stdout, "Write to File %s\n",FN);
@@ -137,7 +141,8 @@ int main(int argc, char *argv[]) {
       cerr << "Couldn't open outfile file " << FN << "\n";
       exit(-1);
   }
-  fwrite("SPARSE\x0\0x1",8,1,fhnd);
+#if 0 //defined(SPARSE_COO)
+  fwrite("SPARSE\x00\x00",8,1,fhnd);
   size_t nr,nc;
   nr=nc=N_nodes;
   fwrite(&nr,8,1,fhnd);
@@ -153,12 +158,31 @@ int main(int argc, char *argv[]) {
       }
     }
   }
+#elif 1 //defined(SPARSE_CSR)
+  fwrite("SPARSE\x00\x02",8,1,fhnd);
+  size_t nr,nc;
+  nr=nc=N_nodes;
+  fwrite(&nr,8,1,fhnd);
+  fwrite(&nc,8,1,fhnd);
+  fwrite(&nnz,8,1,fhnd);
+  fwrite(rs, 4, N_nodes, fhnd);
+  for (int i=0; i<N_nodes; i++) {
+    for (int j=0; j<N_nodes; j++) {
+      int t = gsl_matrix_float_get(W,i,j) > 1.0;
+      gsl_matrix_float_set(W,i,j,(float)t);
+      if (t) {
+        fwrite(&j, 4, 1, fhnd);
+      }
+    }
+  }
+#endif
   fclose(fhnd);
+  if (rs != NULL) free(rs);
 
   gettimeofday(&t0,NULL);
   timersub(&t0,&T0,&dT);
   fprintf(stdout,"t=%li.%06li\t%s output_sparse (%s line %i)\n",dT.tv_sec,dT.tv_usec,__func__,__FILE__,__LINE__);
-  
+  fflush(stdout);
 
   ////////////////////////////////////////////////////////////
   // Calculate the covariance structure the adjacency matrix
