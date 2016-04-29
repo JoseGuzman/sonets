@@ -4,6 +4,15 @@ LIBS = -lgsl -lgslcblas -lgomp
 
 CFLAGS = -Wall ${C_OPTIMIZE_SWITCH} -fopenmp
 
+## Define sparse output format
+#  SPARSE_MM   clear text ascii format
+#  SPARSE_COO  coordinate format, binary
+#  SPARSE_CSR  compressed row storage, most space efficient, default
+#CFLAGS += -DSPARSE_MM
+#CFLAGS += -DSPARSE_COO
+#CFLAGS += -DSPARSE_CSR
+
+
 run_secorder: run_secorder.o secorder_rec_1p.o calc_sqrtcov_rec_1p.o calc_rhos.o calc_stats_1p.o
 	${CC} run_secorder.o secorder_rec_1p.o calc_sqrtcov_rec_1p.o calc_rhos.o calc_stats_1p.o -o $@ ${LIBS}
 

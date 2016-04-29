@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
       cerr << "Couldn't open outfile file " << FN << "\n";
       exit(-1);
   }
-#if 0 //defined(SPARSE_COO)
+#if defined(SPARSE_COO)
   fwrite("SPARSE\x00\x00",8,1,fhnd);
   size_t nr,nc;
   nr=nc=N_nodes;
@@ -155,6 +155,21 @@ int main(int argc, char *argv[]) {
       if (t) {
         fwrite(&i, 4, 1, fhnd);
         fwrite(&j, 4, 1, fhnd);
+      }
+    }
+  }
+#elif defined(SPARSE_MM) 	// MatrixMarket format
+  fprintf(fhnd,"%%MatrixMarket matrix coordinate binary general\n");
+  fprintf(fhnd,"%%\n%%   see also http://math.nist.gov/MatrixMarket/formats.html#MMformat\n%%\n");
+  size_t nr,nc;
+  nr=nc=N_nodes;
+  fprintf(fhnd,"%lu\t%lu\t%lu\n",nr,nc,nnz);
+  for (int i=0; i<N_nodes; i++) {
+    for (int j=0; j<N_nodes; j++) {
+      int t = gsl_matrix_float_get(W,i,j) > 1.0;
+      gsl_matrix_float_set(W,i,j,(float)t);
+      if (t) {
+        fprintf(fhnd,"%lu\t%lu\n",i,j);
       }
     }
   }
