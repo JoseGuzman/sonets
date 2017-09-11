@@ -21,11 +21,12 @@ Reference: L. Zhao, B. Beverlin II, T Netoff, and D. Q. Nykamp.  Synchronization
 
 ## Requirements
 
-* C++ compiler (such a [gcc](https://gcc.gnu.org/)
+* C++ compiler (such as the [gcc compiler](https://gcc.gnu.org/))
 * [GNU Software Library (GSL)](http://www.gnu.org/software/gsl/) 
 (If installing a gsl package on a system, such as on Ubuntu, where the development library is separated from the main library,
-also install the development library.)
+also install the development library.) 
 
+    sudo apt-get install libgsl-dev
 
 ## Usage notes
 
